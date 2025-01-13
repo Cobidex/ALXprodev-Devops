@@ -1,4 +1,4 @@
 #!/bin/bash
 
-jq -r '"\(.name) is of type \(.types[0].type.name), weighs \(.weight)kg, and is 0.\(.height)m tall."' data.json | \
+jq -r '"\(.name) is of type \(.types[0].type.name), weighs \(.weight / 10)kg, and is \(.height / 10)m tall."' data.json | \
 awk '{ print }'
