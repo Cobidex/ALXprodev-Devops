@@ -1,4 +1,4 @@
 #!/bin/bash
 
 jq -r '"\((.name | .[0:1] | ascii_upcase) + (.name | .[1:])) is of type \((.types[0].type.name | .[0:1] | ascii_upcase) + (.types[0].type.name | .[1:])), weighs \(.weight / 10)kg, and is \(.height / 10)m tall."' data.json | \
-awk '{ print }'
+awk '{ print }' | sed 's/^/"/' | sed 's/$/"/'
