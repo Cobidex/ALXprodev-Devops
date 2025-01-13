@@ -1,0 +1,4 @@
+#!/bin/bash
+
+jq -r '"\(.name) is of type \(.types[0].type.name), weighs \(.weight)kg, and is \(.height)m tall."' data.json | \
+awk '{ print }'
