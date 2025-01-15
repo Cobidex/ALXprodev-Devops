@@ -12,7 +12,7 @@ for file in "$json_dir"/*.json ; do
     echo "Processing $file..."
 
     # Extract name, height, and weight using jq
-    name=$(jq -r '.name | ascii_upcase' "$file")
+    name=$(jq -r '.name' "$file" | sed 's/^./\U&/')
     height=$(jq -r '.height / 10' "$file")
     weight=$(jq -r '.weight / 10' "$file")
 
