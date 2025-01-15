@@ -2,26 +2,48 @@
 
 pokemon_list=("bulbasaur" "ivysaur" "venusaur" "charmander" "charmeleon")
 
-api_url="https://pokeapi.co/api/v2/pokemon"
+base_url="https://pokeapi.co/api/v2/pokemon"
 
-delay=2
+# Maximum number of retries for each API request
+max_retries=3
 
-for pokemon in "${pokemon_list[@]}"; do
-  # Convert Pokémon name to lowercase (API uses lowercase names)
-  pokemon_lower=$(echo "$pokemon" | tr '[:upper:]' '[:lower:]')
+# Function to fetch Pokémon data with retries
+fetch_pokemon_data() {
+  local pokemon=$1
+  local retries=0
+  local success=false
 
-  echo "Fetching data for $pokemon..."
-  response=$(curl -s "$api_url/$pokemon_lower")
+  # Format Pokémon name to lowercase for the API URL
+  pokemon_lower=$(echo "$pokemon" | awk '{print tolower($0)}')
 
-  # Check if the response is valid (not null)
-  if [[ "$response" != "null" ]]; then
-    echo "$response" > "${pokemon_lower}.json"
-    echo "Data for $pokemon saved to ${pokemon_lower}.json."
-  else
-    echo "Failed to fetch data for $pokemon. Check if the Pokémon name is valid."
+  while [[ $retries -lt $max_retries ]]; do
+    echo "Fetching data for $pokemon (Attempt $((retries + 1))/$max_retries)..."
+    
+    response=$(curl -s -w "%{http_code}" -o "$pokemon_lower.json" "$base_url/$pokemon_lower")
+    http_code=${response:(-3)} # Extract HTTP status code
+    response_body=$(cat "$pokemon_lower.json")
+    
+    if [[ $http_code -eq 200 ]]; then
+      echo "Data for $pokemon successfully retrieved and saved to $pokemon_lower.json."
+      success=true
+      break
+    else
+      echo "Failed to fetch data for $pokemon. HTTP Code: $http_code"
+      retries=$((retries + 1))
+      sleep 2
+    fi
+  done
+
+  if [[ $success == false ]]; then
+    echo "Error: Unable to fetch data for $pokemon after $max_retries attempts. Skipping..."
+    rm -f "$pokemon_lower.json"
+    echo "$pokemon: Failed after $max_retries attempts." >> error_log.txt
   fi
+}
 
-  sleep $delay
+# Iterate through the Pokémon list
+for pokemon in "${pokemon_list[@]}"; do
+  fetch_pokemon_data "$pokemon"
 done
 
-echo "All Pokémon data retrieved."
+echo "Data retrieval completed. Check 'error_log.txt' for any failed requests."
