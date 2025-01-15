@@ -1,0 +1,52 @@
+#!/bin/bash
+
+pokemon_list=("bulbasaur" "ivysaur" "venusaur" "charmander" "charmeleon")
+
+base_url="https://pokeapi.co/api/v2/pokemon"
+
+max_concurrent=3
+
+sem="sem.lock"
+
+touch $sem
+
+fetch_pokemon_data() {
+  local pokemon=$1
+
+  pokemon_lower=$(echo "$pokemon" | awk '{print tolower($0)}')
+
+  echo "Fetching data for $pokemon..."
+
+  response=$(curl -s -o "$pokemon_lower.json" -w "%{http_code}" "$base_url/$pokemon_lower")
+  http_code=${response:(-3)} # Extract HTTP status code
+
+  if [[ $http_code -eq 200 ]]; then
+    echo "Data for $pokemon successfully saved to $pokemon_lower.json."
+  else
+    echo "Failed to fetch data for $pokemon. HTTP Code: $http_code" >> error_log.txt
+    rm -f "$pokemon_lower.json" # Remove incomplete file
+  fi
+}
+
+# Export the function for use in subshells
+export -f fetch_pokemon_data
+
+process_count=0
+
+for pokemon in "${pokemon_list[@]}"; do
+  # Start a background process
+  fetch_pokemon_data "$pokemon" &
+
+  process_count=$((process_count + 1))
+
+  # Wait for background processes if max_concurrent limit is reached
+  if [[ $process_count -ge $max_concurrent ]]; then
+    wait -n
+    process_count=$((process_count - 1))
+  fi
+done
+
+# Wait for all background processes to finish
+wait
+
+echo "All data retrieval tasks completed. Check 'error_log.txt' for any failed requests."
